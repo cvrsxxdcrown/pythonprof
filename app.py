@@ -125,8 +125,13 @@ def main():
         st.divider()
 
         if st.button("🔍 Предсказать цену"):
-            input_df = pd.DataFrame([input_data])
-            prediction = model.predict(input_df)[0]
+            st.session_state.prediction_result = model.predict(pd.DataFrame([input_data]))[0]
+            st.session_state.input_data = input_data
+
+        if "prediction_result" in st.session_state:
+            prediction = st.session_state.prediction_result
+            input_data = st.session_state.input_data
+
             st.success(f"💰 Оценочная стоимость: **${prediction * 1000:.2f}**")
 
             # 🔁 Сравнение с общими данными
@@ -141,6 +146,7 @@ def main():
             ax.set_title(f"{selected_feature} — {COLUMNS[selected_feature]}")
             ax.legend()
             st.pyplot(fig)
+
 
 if __name__ == "__main__":
     main()

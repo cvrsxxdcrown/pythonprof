@@ -30,7 +30,6 @@ COLUMNS = {
     'LSTAT': "% бедного населения (чем выше — ниже цена)"
 }
 
-
 @st.cache_resource
 def train_and_save_model():
     df = pd.read_csv(CSV_PATH)
@@ -48,7 +47,6 @@ def train_and_save_model():
         pickle.dump(model, f)
     return model, rmse, df
 
-
 @st.cache_resource
 def load_model():
     if not os.path.exists(MODEL_PATH):
@@ -58,7 +56,6 @@ def load_model():
         with open(MODEL_PATH, "rb") as f:
             model = pickle.load(f)
         return model, None, df
-
 
 def main():
     st.set_page_config(page_title="💵 Стоимость домов в Бостоне", layout="wide")
@@ -78,20 +75,41 @@ def main():
             st.markdown(f"**{key}** — {desc}")
 
         st.divider()
-        st.subheader("📌 Корреляция признаков с ценой (MEDV)")
+        st.subheader("📌 Выберите тип графика для анализа")
 
-        fig_corr, ax_corr = plt.subplots(figsize=(10, 8))
-        sns.heatmap(df.corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax_corr)
-        st.pyplot(fig_corr)
+        analysis_options = [
+            "Корреляционная матрица",
+            "Распределение каждого признака",
+            "Зависимость признаков от цены"
+        ]
+        selected_analysis = st.selectbox("Выберите график:", analysis_options)
+
+        if selected_analysis == "Корреляционная матрица":
+            fig_corr, ax_corr = plt.subplots(figsize=(10, 8))
+            sns.heatmap(df.corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax_corr)
+            ax_corr.set_title("Корреляционная матрица признаков и цены")
+            st.pyplot(fig_corr)
+
+        elif selected_analysis == "Распределение каждого признака":
+            selected_feature = st.selectbox("Выберите признак:", list(COLUMNS.keys()))
+            fig_feat, ax_feat = plt.subplots()
+            sns.histplot(df[selected_feature], bins=30, kde=True, ax=ax_feat, color="lightblue")
+            ax_feat.set_title(f"{selected_feature} — {COLUMNS[selected_feature]}")
+            st.pyplot(fig_feat)
+
+        elif selected_analysis == "Зависимость признаков от цены":
+            selected_feature = st.selectbox("Выберите признак:", list(COLUMNS.keys()))
+            fig_scatter, ax_scatter = plt.subplots()
+            sns.scatterplot(data=df, x=selected_feature, y='MEDV', ax=ax_scatter)
+            ax_scatter.set_title(f"{selected_feature} vs MEDV (цена дома)")
+            st.pyplot(fig_scatter)
 
     # 🤖 Предсказание
     with tab2:
         st.header("📊 Введите данные дома")
         input_data = {}
         col1, col2, col3 = st.columns(3)
-        sliders = {}
 
-        # Ввод параметров и отображение сравнения
         for i, (key, desc) in enumerate(COLUMNS.items()):
             col = [col1, col2, col3][i % 3]
             min_val = float(df[key].min())
@@ -112,15 +130,17 @@ def main():
             st.success(f"💰 Оценочная стоимость: **${prediction * 1000:.2f}**")
 
             # 🔁 Сравнение с общими данными
-            st.subheader("📊 Сравнение введённых значений с общими данными")
-            for key, value in input_data.items():
-                fig, ax = plt.subplots()
-                sns.histplot(df[key], bins=30, kde=True, ax=ax, color="lightblue")
-                ax.axvline(value, color="red", linestyle="--", label="Ваш ввод")
-                ax.set_title(f"{key} — {COLUMNS[key]}")
-                ax.legend()
-                st.pyplot(fig)
+            st.subheader("📊 Сравнение введённого значения с распределением признака")
 
+            selected_feature = st.selectbox("Выберите признак для сравнения:", list(input_data.keys()))
+            selected_value = input_data[selected_feature]
+
+            fig, ax = plt.subplots()
+            sns.histplot(df[selected_feature], bins=30, kde=True, ax=ax, color="lightblue")
+            ax.axvline(selected_value, color="red", linestyle="--", label="Ваш ввод")
+            ax.set_title(f"{selected_feature} — {COLUMNS[selected_feature]}")
+            ax.legend()
+            st.pyplot(fig)
 
 if __name__ == "__main__":
     main()
